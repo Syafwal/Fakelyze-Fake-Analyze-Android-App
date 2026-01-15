@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Light Theme untuk aplikasi Fakelyze - API 27+ -->
+    <style name="Theme.Fakelyze" parent="Theme.AppCompat.Light.NoActionBar">
+        <!-- Warna dasar -->
+        <item name="colorPrimary">@color/purple_500</item>
+        <item name="colorPrimaryDark">@color/purple_700</item>
+        <item name="colorAccent">@color/teal_200</item>
+
+        <!-- Status bar -->
+        <item name="android:statusBarColor">@color/white</item>
+        <item name="android:windowLightStatusBar">true</item>
+
+        <!-- Navigation bar -->
+        <item name="android:navigationBarColor">@color/white</item>
+        <item name="android:windowLightNavigationBar">true</item>
+
+        <!-- Background -->
+        <item name="android:windowBackground">@color/white</item>
+    </style>
+</resources>
