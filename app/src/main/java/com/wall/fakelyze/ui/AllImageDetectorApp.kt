@@ -6,26 +6,42 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.wall.fakelyze.data.AppContainer
 import com.wall.fakelyze.ui.navigation.AIImageDetectorNavHost
 import com.wall.fakelyze.ui.navigation.BottomNavigationBar
+import com.wall.fakelyze.ui.navigation.FakelyzeDestination
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
-fun AIImageDetectorApp(appContainer: AppContainer, modifier: Modifier = Modifier) {
+fun AIImageDetectorApp(modifier: Modifier = Modifier) {
     val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    // Define top level destinations - only show bottom bar for these routes
+    val topLevelDestinations = listOf(
+        FakelyzeDestination.Home.route,
+        FakelyzeDestination.History.route,
+        FakelyzeDestination.Info.route,
+        FakelyzeDestination.Settings.route
+    )
+
+    // Check if current route is a top level destination
+    val showBottomBar = currentRoute in topLevelDestinations
 
     Scaffold(
         bottomBar = {
-            BottomNavigationBar(navController)
+            if (showBottomBar) {
+                BottomNavigationBar(navController)
+            }
         },
         contentWindowInsets = WindowInsets(0,0,0,0)
     ) { innerPadding ->
         AIImageDetectorNavHost(
             navController = navController,
-            appContainer = appContainer,
             modifier = modifier.padding(innerPadding).consumeWindowInsets(innerPadding)
         )
     }

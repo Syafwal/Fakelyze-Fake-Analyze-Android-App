@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -24,31 +25,28 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.wall.fakelyze.ui.component.DetectionResultCard
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
     viewModel: HistoryViewModel,
-    onItemClick: (String) -> Unit
+    onItemClick: (String) -> Unit,
+    isPremium: Boolean = false,
+    onUpgradeToPremium: (() -> Unit)? = null
 ) {
-    val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val historyItems by viewModel.historyItems.collectAsState()
-    val snackbarMessage by viewModel.snackbarMessage.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
-    // Show snackbar when message is available
-    LaunchedEffect(snackbarMessage) {
-        snackbarMessage?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.snackbarMessageShown()
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { errorMessage ->
+            snackbarHostState.showSnackbar(errorMessage)
+            viewModel.clearError()
         }
     }
 
@@ -57,66 +55,96 @@ fun HistoryScreen(
             TopAppBar(
                 title = { Text("History") },
                 actions = {
-                    // Clear history action
+                    // Refresh button
                     IconButton(
-                        onClick = {
-                            viewModel.clearAllHistory()
-                        },
-                        enabled = historyItems?.isNotEmpty() == true
+                        onClick = { viewModel.refreshHistory() }
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Clear history"
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh"
                         )
+                    }
+
+                    // Clear all button
+                    if (uiState.historyList.isNotEmpty()) {
+                        IconButton(
+                            onClick = { viewModel.clearAllHistory() }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Clear All"
+                            )
+                        }
                     }
                 }
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState)
+        }
     ) { paddingValues ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
             when {
-                historyItems == null -> {
-                    // Loading state
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
-                    )
+                // Loading state
+                uiState.isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            CircularProgressIndicator()
+                            Text(
+                                text = "Loading history...",
+                                modifier = Modifier.padding(top = 16.dp),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
                 }
-                historyItems?.isEmpty() == true -> {
-                    // Empty state
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                            .align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally
+
+                // Empty state
+                uiState.historyList.isEmpty() && !uiState.isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "No history yet",
-                            style = MaterialTheme.typography.headlineSmall,
-                            textAlign = TextAlign.Center
-                        )
-                        Text(
-                            text = "Analyze some images to see your detection history here",
-                            style = MaterialTheme.typography.bodyMedium,
+                            text = if (uiState.error != null) {
+                                "Error loading history"
+                            } else {
+                                "Tidak ada hasil scan\nSilahkan scan Gambar atau foto dari Kamera dan Gallery"
+                            },
+                            style = MaterialTheme.typography.bodyLarge,
                             textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(top = 8.dp)
+                            modifier = Modifier.padding(16.dp)
                         )
                     }
                 }
+
+                // History list
                 else -> {
-                    // History list
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        items(historyItems ?: emptyList(), key = { it.id }) { item ->
+                        // PERBAIKAN: Menggunakan uiState.historyList yang benar dan menambahkan premium logic
+                        items(
+                            items = uiState.historyList,
+                            key = { it.id }
+                        ) { item ->
                             DetectionResultCard(
                                 detectionResult = item,
-                                onClick = { onItemClick(item.id) }
+                                onClick = { onItemClick(item.id) },
+                                isPremium = isPremium, // PERBAIKAN: Menambahkan status premium
+                                onUpgradeToPremium = onUpgradeToPremium, // PERBAIKAN: Menambahkan callback upgrade premium
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 4.dp)
                             )
                         }
                     }
@@ -125,4 +153,3 @@ fun HistoryScreen(
         }
     }
 }
-

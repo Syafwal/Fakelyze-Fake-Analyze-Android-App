@@ -26,6 +26,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.wall.fakelyze.domain.model.DetectionResult
 import com.wall.fakelyze.ui.component.ResultVisualizer
 import kotlinx.coroutines.launch
+import org.koin.androidx.compose.koinViewModel
 import java.io.File
 
 
@@ -33,8 +34,10 @@ import java.io.File
 @Composable
 fun DetailsScreen(
     detectionResultId: String,
-    viewModel: DetailViewModel,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    viewModel: DetailViewModel = koinViewModel(),
+    isPremium: Boolean = false, // PERBAIKAN: Tambah parameter premium
+    onUpgradeToPremium: (() -> Unit)? = null // PERBAIKAN: Callback untuk upgrade premium
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -74,18 +77,31 @@ fun DetailsScreen(
                     }
                 },
                 actions = {
-                    // Share action
+                    // Share action - only for premium users
                     IconButton(
                         onClick = {
                             detectionResult?.let { result ->
-                                shareDetectionResult(context, result)
+                                if (isPremium) {
+                                    shareDetectionResult(context, result)
+                                } else {
+                                    // Show upgrade prompt for non-premium users
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar("Fitur share hanya tersedia untuk pengguna premium")
+                                    }
+                                    onUpgradeToPremium?.invoke()
+                                }
                             }
                         },
                         enabled = detectionResult != null
                     ) {
                         Icon(
                             imageVector = Icons.Default.Share,
-                            contentDescription = "Share"
+                            contentDescription = if (isPremium) "Share" else "Share (Premium Only)",
+                            tint = if (isPremium) {
+                                androidx.compose.material3.LocalContentColor.current
+                            } else {
+                                androidx.compose.material3.LocalContentColor.current.copy(alpha = 0.6f)
+                            }
                         )
                     }
 
@@ -129,7 +145,11 @@ fun DetailsScreen(
                             .fillMaxSize()
                             .padding(paddingValues)
                     ) {
-                        ResultVisualizer(detectionResult = result)
+                        ResultVisualizer(
+                            detectionResult = result,
+                            isPremium = isPremium, // Pass premium status
+                            onUpgradeToPremium = onUpgradeToPremium // Pass callback upgrade premium
+                        )
                     }
                 }
             }
@@ -164,4 +184,3 @@ private fun shareDetectionResult(context: android.content.Context, detectionResu
         )
     )
 }
-

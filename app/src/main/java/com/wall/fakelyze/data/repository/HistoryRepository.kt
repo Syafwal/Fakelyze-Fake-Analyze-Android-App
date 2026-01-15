@@ -35,7 +35,8 @@ class HistoryRepositoryImpl(private val historyDao: HistoryDao) : HistoryReposit
                 thumbnailPath = detectionResult.thumbnailPath,
                 isAIGenerated = detectionResult.isAIGenerated,
                 confidenceScore = detectionResult.confidenceScore,
-                timestamp = detectionResult.timestamp
+                timestamp = detectionResult.timestamp,
+                explanation = detectionResult.explanation  // Menyimpan explanation ke database
             )
         )
     }
@@ -48,7 +49,8 @@ class HistoryRepositoryImpl(private val historyDao: HistoryDao) : HistoryReposit
                 thumbnailPath = detectionResult.thumbnailPath,
                 isAIGenerated = detectionResult.isAIGenerated,
                 confidenceScore = detectionResult.confidenceScore,
-                timestamp = detectionResult.timestamp
+                timestamp = detectionResult.timestamp,
+                explanation = detectionResult.explanation  // Menyimpan explanation saat delete juga
             )
         )
     }

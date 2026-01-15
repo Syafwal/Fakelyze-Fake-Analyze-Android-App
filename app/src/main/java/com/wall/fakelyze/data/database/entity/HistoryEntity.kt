@@ -13,7 +13,8 @@ data class HistoryEntity(
     val thumbnailPath: String,
     val isAIGenerated: Boolean,
     val confidenceScore: Float,
-    val timestamp: Date = Date()
+    val timestamp: Date = Date(),
+    val explanation: String? = null  // Menambahkan field explanation
 )
 
 
@@ -23,5 +24,6 @@ fun HistoryEntity.toDetectionResult() = DetectionResult(
     thumbnailPath = thumbnailPath,
     isAIGenerated = isAIGenerated,
     confidenceScore = confidenceScore,
-    timestamp = timestamp
+    timestamp = timestamp,
+    explanation = explanation  // Meneruskan explanation ke DetectionResult
 )

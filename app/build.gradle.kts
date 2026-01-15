@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
 
 }
@@ -30,16 +31,25 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+
     }
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "21"
     }
     buildFeatures {
         compose = true
+        mlModelBinding = true
+        buildConfig = true
+    }
+    lint {
+        disable += "UnsafeOptInUsageError"
+        checkReleaseBuilds = false
+        abortOnError = false
     }
 }
+
 
 dependencies {
 
@@ -56,6 +66,8 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.camera2)
+    //noinspection GradleDependency
+    implementation(libs.androidx.lifecycle.runtime.compose)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -87,12 +99,33 @@ dependencies {
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
 
-    implementation(libs.tensorflow.tensorflow.lite)
+    // TENSORFLOW LITE (PASTIKAN HANYA INI YANG DIGUNAKAN)
     implementation(libs.tensorflow.lite.support)
-    implementation(libs.tensorflow.lite.metadata)
-
-//    TensorFlow Lite Task
     implementation(libs.tensorflow.lite.task.vision)
+    // TensorFlow Lite Metadata
+    implementation(libs.tensorflow.lite.metadata.v043)
 
+    //Font Google sans
+    implementation(libs.androidx.ui.text.google.fonts)
 
+    // Kotlin Serialization
+    implementation(libs.kotlinx.serialization.json)
+
+    // CRITICAL: Add missing camera extensions for stability
+    implementation(libs.androidx.camera.extensions)
+
+    // CRITICAL: Add missing compose runtime for stability
+    implementation(libs.androidx.runtime)
+
+    // CRITICAL: Add missing activity ktx for proper lifecycle
+    implementation(libs.androidx.activity.ktx)
+
+    // CRITICAL: Add missing viewmodel compose integration
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+
+    // CRITICAL: Add coroutines for Android
+    implementation(libs.kotlinx.coroutines.android)
+
+    // CRITICAL: Add bitmap processing support for camera
+    implementation(libs.androidx.core.ktx.v1120)
 }

@@ -5,5 +5,5 @@ import kotlinx.serialization.Serializable
 sealed class Screen {
 
     @Serializable
-    data object
+    data object Home : Screen()
 }

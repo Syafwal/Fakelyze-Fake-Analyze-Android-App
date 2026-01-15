@@ -1,25 +1,20 @@
 package com.wall.fakelyze.ui.screens.results
 
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.wall.fakelyze.ui.component.ResultVisualizer
 import java.io.File
@@ -27,103 +22,194 @@ import java.io.File
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ResultsScreen(
-    imagePath: String,
-    thumbnailPath: String,
-    isAIGenerated: Boolean,
-    confidenceScore: Float,
+    viewModel: ResultsViewModel,
     onBackClick: () -> Unit,
-    viewModel: ResultsViewModel
+    isPremium: Boolean = false, // PERBAIKAN: Tambah parameter premium
+    onUpgradeToPremium: (() -> Unit)? = null, // PERBAIKAN: Callback untuk upgrade premium
+    // PERBAIKAN: Tambahkan parameter untuk menerima data hasil deteksi
+    imagePath: String = "",
+    thumbnailPath: String = "",
+    isAIGenerated: Boolean = false,
+    confidenceScore: Float = 0f,
+    explanation: String? = null
 ) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val uiState by viewModel.uiState.collectAsState()
 
-    // Load detection result
-    LaunchedEffect(key1 = imagePath) {
-        viewModel.loadDetectionResult(
-            imagePath = imagePath,
-            thumbnailPath = thumbnailPath,
-            isAIGenerated = isAIGenerated,
-            confidenceScore = confidenceScore
-        )
-    }
+    android.util.Log.d("ResultsScreen", "🔄 === RESULTSSCREEN DIMULAI ===")
+    android.util.Log.d("ResultsScreen", "📊 Loading: ${uiState.isLoading}")
+    android.util.Log.d("ResultsScreen", "📋 HasData: ${uiState.detectionResult != null}")
+    android.util.Log.d("ResultsScreen", "❌ Error: ${uiState.errorMessage}")
+    android.util.Log.d("ResultsScreen", "📁 Received ImagePath: '$imagePath'")
+    android.util.Log.d("ResultsScreen", "📊 Received Confidence: $confidenceScore")
+    android.util.Log.d("ResultsScreen", "🤖 Received IsAI: $isAIGenerated")
 
-    // Handle error messages
-    LaunchedEffect(key1 = uiState.errorMessage) {
-        uiState.errorMessage?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.clearErrorMessage()
+    // PERBAIKAN: Gunakan data langsung dari parameter yang diterima
+    LaunchedEffect(imagePath, isAIGenerated, confidenceScore) {
+        if (imagePath.isNotEmpty()) {
+            android.util.Log.d("ResultsScreen", "✅ Setting data langsung dari parameter")
+            viewModel.setDetectionResult(
+                imagePath = imagePath,
+                thumbnailPath = thumbnailPath,
+                isAIGenerated = isAIGenerated,
+                confidenceScore = confidenceScore,
+                explanation = explanation
+            )
         }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Detection Result") },
+                title = { Text("Hasil Deteksi") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back"
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Kembali"
                         )
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = {
-                            uiState.detectionResult?.let { detectionResult ->
-                                shareDetectionResult(context, detectionResult)
+                    // PERBAIKAN: Share button dengan logic premium
+                    if (uiState.detectionResult != null) {
+                        IconButton(
+                            onClick = {
+                                // PERBAIKAN: Cek premium status sebelum share
+                                if (!isPremium) {
+                                    // User free - tampilkan upgrade prompt
+                                    onUpgradeToPremium?.invoke()
+                                    return@IconButton
+                                }
+
+                                // User premium - lanjutkan share
+                                try {
+                                    val imageFile = File(imagePath)
+                                    if (imageFile.exists()) {
+                                        val uri = FileProvider.getUriForFile(
+                                            context,
+                                            "${context.packageName}.fileprovider",
+                                            imageFile
+                                        )
+
+                                        val shareIntent = android.content.Intent().apply {
+                                            action = android.content.Intent.ACTION_SEND
+                                            putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                                            type = "image/*"
+                                            putExtra(
+                                                android.content.Intent.EXTRA_TEXT,
+                                                "Hasil deteksi: ${if (isAIGenerated) "AI Generated" else "Real"} (${(confidenceScore * 100).toInt()}%)"
+                                            )
+                                            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        }
+
+                                        context.startActivity(android.content.Intent.createChooser(shareIntent, "Bagikan Hasil"))
+                                    }
+                                } catch (e: Exception) {
+                                    android.util.Log.e("ResultsScreen", "Error sharing", e)
+                                }
                             }
-                        },
-                        enabled = uiState.detectionResult != null
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Share,
-                            contentDescription = "Share"
-                        )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = if (isPremium) "Bagikan" else "Bagikan (Premium)",
+                                tint = if (isPremium) {
+                                    MaterialTheme.colorScheme.onSurface
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                }
+                            )
+                        }
                     }
                 }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        androidx.compose.foundation.layout.Box(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            uiState.detectionResult?.let { detectionResult ->
-                ResultVisualizer(detectionResult = detectionResult)
+            when {
+                uiState.isLoading -> {
+                    // Loading state
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        CircularProgressIndicator()
+                        Text(
+                            text = "Memuat hasil deteksi...",
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(top = 16.dp)
+                        )
+                    }
+                }
+
+                uiState.errorMessage != null -> {
+                    // Error state
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        // PERBAIKAN: Simpan errorMessage ke variabel lokal untuk menghindari smart cast error
+                        val errorMessage = uiState.errorMessage
+                        Text(
+                            text = errorMessage ?: "Terjadi kesalahan yang tidak diketahui",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center
+                        )
+                        Button(
+                            onClick = onBackClick,
+                            modifier = Modifier.padding(top = 16.dp)
+                        ) {
+                            Text("Kembali")
+                        }
+                    }
+                }
+
+                uiState.detectionResult != null -> {
+                    // Success state - tampilkan hasil
+                    ResultVisualizer(
+                        detectionResult = uiState.detectionResult!!,
+                        isPremium = isPremium,
+                        onUpgradeToPremium = onUpgradeToPremium,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                else -> {
+                    // Fallback state - jika tidak ada data
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "Tidak ada data hasil deteksi",
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center
+                        )
+                        Button(
+                            onClick = onBackClick,
+                            modifier = Modifier.padding(top = 16.dp)
+                        ) {
+                            Text("Kembali ke Home")
+                        }
+                    }
+                }
             }
         }
     }
 }
-
-private fun shareDetectionResult(context: android.content.Context, detectionResult: com.wall.fakelyze.domain.model.DetectionResult) {
-    val file = File(detectionResult.imagePath)
-    val uri = FileProvider.getUriForFile(
-        context,
-        "${context.packageName}.fileprovider",
-        file
-    )
-
-    val shareIntent = android.content.Intent().apply {
-        action = android.content.Intent.ACTION_SEND
-        putExtra(android.content.Intent.EXTRA_STREAM, uri)
-        putExtra(
-            android.content.Intent.EXTRA_TEXT,
-            "Image Detection Result: ${if (detectionResult.isAIGenerated) "AI Generated" else "Real"} " +
-                    "with ${(detectionResult.confidenceScore * 100).toInt()}% confidence."
-        )
-        type = "image/jpeg"
-        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }
-
-    context.startActivity(
-        android.content.Intent.createChooser(
-            shareIntent,
-            "Share detection result"
-        )
-    )
-}
-

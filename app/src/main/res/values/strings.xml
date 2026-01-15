@@ -1,3 +1,46 @@
 <resources>
     <string name="app_name">Fakelyze</string>
+
+    <!-- Teks umum aplikasi -->
+    <string name="welcome">Selamat datang</string>
+    <string name="loading">Memuat...</string>
+    <string name="error">Kesalahan</string>
+    <string name="retry">Coba lagi</string>
+    <string name="cancel">Batal</string>
+    <string name="ok">OK</string>
+    <string name="yes">Ya</string>
+    <string name="no">Tidak</string>
+    <string name="close">Tutup</string>
+    <string name="save">Simpan</string>
+    <string name="delete">Hapus</string>
+    <string name="share">Bagikan</string>
+
+    <!-- Teks untuk deteksi gambar -->
+    <string name="select_image">Pilih Gambar</string>
+    <string name="take_photo">Ambil Foto</string>
+    <string name="from_gallery">Dari Galeri</string>
+    <string name="analyzing">Menganalisis...</string>
+    <string name="analysis_complete">Analisis selesai</string>
+    <string name="real_image">Gambar asli</string>
+    <string name="fake_image">Gambar palsu</string>
+    <string name="detection_result">Hasil deteksi</string>
+    <string name="confidence_level">Tingkat kepercayaan</string>
+
+    <!-- Pesan error -->
+    <string name="error_no_image">Tidak ada gambar yang dipilih</string>
+    <string name="error_analysis_failed">Analisis gagal</string>
+    <string name="error_permission_denied">Izin ditolak</string>
+    <string name="error_camera_unavailable">Kamera tidak tersedia</string>
+    <string name="error_network">Kesalahan jaringan</string>
+
+    <!-- Pengaturan -->
+    <string name="settings">Pengaturan</string>
+    <string name="about">Tentang</string>
+    <string name="help">Bantuan</string>
+    <string name="privacy_policy">Kebijakan privasi</string>
+    <string name="terms_of_service">Syarat dan ketentuan</string>
+
+    <!-- Izin -->
+    <string name="permission_camera">Izin kamera diperlukan untuk mengambil foto</string>
+    <string name="permission_storage">Izin penyimpanan diperlukan untuk mengakses galeri</string>
 </resources>

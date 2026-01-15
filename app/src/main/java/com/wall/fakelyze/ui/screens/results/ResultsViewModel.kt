@@ -1,71 +1,221 @@
 package com.wall.fakelyze.ui.screens.results
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.wall.fakelyze.data.repository.HistoryRepository
 import com.wall.fakelyze.domain.model.DetectionResult
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Date
 
 class ResultsViewModel(
     private val historyRepository: HistoryRepository
 ) : ViewModel() {
 
+    companion object {
+        private const val TAG = "ResultsViewModel"
+    }
+
     // UI state
     private val _uiState = MutableStateFlow(ResultsUiState())
     val uiState: StateFlow<ResultsUiState> = _uiState.asStateFlow()
 
-    // Load detection result
+    // PERBAIKAN: Method untuk set detection result langsung dari parameter
+    fun setDetectionResult(
+        imagePath: String,
+        thumbnailPath: String,
+        isAIGenerated: Boolean,
+        confidenceScore: Float,
+        explanation: String? = null
+    ) {
+        Log.d(TAG, "🔄 === SET DETECTION RESULT ===")
+        Log.d(TAG, "📁 ImagePath: '$imagePath'")
+        Log.d(TAG, "📁 ThumbnailPath: '$thumbnailPath'")
+        Log.d(TAG, "🤖 IsAI: $isAIGenerated")
+        Log.d(TAG, "📊 Confidence: $confidenceScore (${(confidenceScore * 100).toInt()}%)")
+        Log.d(TAG, "📝 Explanation: ${explanation?.take(50)}...")
+
+        try {
+            // PERBAIKAN: Validasi minimal - pastikan data essential ada
+            val finalImagePath = if (imagePath.isNotBlank()) imagePath else ""
+            val finalThumbnailPath = if (thumbnailPath.isNotBlank()) thumbnailPath else finalImagePath
+            val finalConfidence = confidenceScore.coerceIn(0.0f, 1.0f)
+            val finalExplanation = explanation ?: generateDefaultExplanation(isAIGenerated, finalConfidence)
+
+            // PERBAIKAN: Buat DetectionResult dengan data yang valid
+            val detectionResult = DetectionResult(
+                id = "temp_${System.currentTimeMillis()}",
+                imagePath = finalImagePath,
+                thumbnailPath = finalThumbnailPath,
+                isAIGenerated = isAIGenerated,
+                confidenceScore = finalConfidence,
+                explanation = finalExplanation,
+                timestamp = Date() // PERBAIKAN: Gunakan timestamp bukan scanDate
+            )
+
+            Log.d(TAG, "✅ DetectionResult created successfully")
+            Log.d(TAG, "📋 ID: ${detectionResult.id}")
+            Log.d(TAG, "📁 Final ImagePath: '${detectionResult.imagePath}'")
+            Log.d(TAG, "📊 Final Confidence: ${detectionResult.confidenceScore}")
+
+            // PERBAIKAN: Update UI state dengan data yang sudah divalidasi
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                errorMessage = null,
+                detectionResult = detectionResult
+            )
+
+            Log.d(TAG, "✅ UI State updated successfully")
+
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error setting detection result", e)
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                errorMessage = "Gagal memuat hasil deteksi: ${e.localizedMessage}",
+                detectionResult = null
+            )
+        }
+    }
+
+    // Load detection result dengan optimasi loading dan validasi data yang ketat
     fun loadDetectionResult(
         imagePath: String,
         thumbnailPath: String,
         isAIGenerated: Boolean,
-        confidenceScore: Float
+        confidenceScore: Float,
+        explanation: String? = null
     ) {
-        val detectionResult = DetectionResult(
-            imagePath = imagePath,
-            thumbnailPath = thumbnailPath,
-            isAIGenerated = isAIGenerated,
-            confidenceScore = confidenceScore,
-            timestamp = Date()
-        )
+        Log.d(TAG, "🔄 === MULAI LOAD DETECTION RESULT ===")
+        Log.d(TAG, "📁 ImagePath: '$imagePath'")
+        Log.d(TAG, "📁 ThumbnailPath: '$thumbnailPath'")
+        Log.d(TAG, "🤖 IsAI: $isAIGenerated")
+        Log.d(TAG, "📊 Confidence: $confidenceScore (${(confidenceScore * 100).toInt()}%)")
+        Log.d(TAG, "📝 Explanation: ${explanation?.take(50)}...")
 
+        // PERBAIKAN: LANGSUNG set data tanpa validasi berlebihan
         _uiState.value = _uiState.value.copy(
-            detectionResult = detectionResult,
-            isLoading = false
+            isLoading = false, // LANGSUNG set false, tidak perlu loading animation
+            errorMessage = null,
+            detectionResult = null
         )
 
-        saveToHistory(detectionResult)
+        try {
+            // PERBAIKAN: Validasi minimal - hanya pastikan data essential ada
+            val finalImagePath = if (imagePath.isNotBlank()) imagePath else ""
+            val finalThumbnailPath = if (thumbnailPath.isNotBlank()) thumbnailPath else finalImagePath
+            val finalConfidence = confidenceScore.coerceIn(0.0f, 1.0f)
+            val finalExplanation = explanation ?: generateDefaultExplanation(isAIGenerated, finalConfidence)
+
+            // PERBAIKAN: Buat DetectionResult dengan data yang valid
+            val detectionResult = DetectionResult(
+                id = "temp_${System.currentTimeMillis()}",
+                imagePath = finalImagePath,
+                thumbnailPath = finalThumbnailPath,
+                isAIGenerated = isAIGenerated,
+                confidenceScore = finalConfidence,
+                explanation = finalExplanation,
+                timestamp = Date() // PERBAIKAN: Gunakan timestamp bukan scanDate
+            )
+
+            Log.d(TAG, "✅ DetectionResult created successfully")
+            Log.d(TAG, "📋 ID: ${detectionResult.id}")
+            Log.d(TAG, "📁 Final ImagePath: '${detectionResult.imagePath}'")
+            Log.d(TAG, "📊 Final Confidence: ${detectionResult.confidenceScore}")
+
+            // PERBAIKAN: Update UI state dengan data yang sudah divalidasi
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                errorMessage = null,
+                detectionResult = detectionResult
+            )
+
+            Log.d(TAG, "✅ UI State updated successfully")
+
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error loading detection result", e)
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                errorMessage = "Gagal memuat hasil deteksi: ${e.localizedMessage}",
+                detectionResult = null
+            )
+        }
     }
 
-    // Save result to history
-    private fun saveToHistory(detectionResult: DetectionResult) {
-        viewModelScope.launch {
+    // PERBAIKAN: Method untuk generate explanation default
+    private fun generateDefaultExplanation(isAIGenerated: Boolean, confidence: Float): String {
+        val percentage = (confidence * 100).toInt()
+        return when {
+            isAIGenerated && confidence >= 0.8f ->
+                "Gambar ini kemungkinan besar ($percentage%) dibuat oleh AI. Terdeteksi pola-pola yang konsisten dengan generasi AI."
+            isAIGenerated && confidence >= 0.6f ->
+                "Gambar ini cukup mungkin ($percentage%) dibuat oleh AI. Ada beberapa indikator yang menunjukkan kemungkinan generasi AI."
+            isAIGenerated ->
+                "Gambar ini mungkin ($percentage%) dibuat oleh AI, namun tingkat kepercayaan rendah."
+            !isAIGenerated && confidence >= 0.8f ->
+                "Gambar ini kemungkinan besar ($percentage%) adalah foto asli. Tidak terdeteksi tanda-tanda generasi AI yang signifikan."
+            !isAIGenerated && confidence >= 0.6f ->
+                "Gambar ini cukup mungkin ($percentage%) adalah foto asli. Karakteristik alami lebih dominan."
+            else ->
+                "Gambar ini mungkin ($percentage%) adalah foto asli, namun analisis memerlukan verifikasi lebih lanjut."
+        }
+    }
+
+    // PERBAIKAN: Method untuk loading dari history repository
+    fun loadDetectionResultFromHistory(resultId: String) {
+        Log.d(TAG, "🔄 Loading detection result from history: $resultId")
+
+        _uiState.value = _uiState.value.copy(
+            isLoading = true,
+            errorMessage = null
+        )
+
+        viewModelScope.launch(Dispatchers.IO) {
             try {
-                historyRepository.saveHistory(detectionResult)
-                _uiState.value = _uiState.value.copy(
-                    saveSuccess = true
-                )
+                // PERBAIKAN: Gunakan method yang benar dari HistoryRepository
+                val result = historyRepository.getHistoryById(resultId)
+
+                // PERBAIKAN: Update UI state dengan proper context switching
+                withContext(Dispatchers.Main) {
+                    _uiState.value = if (result != null) {
+                        Log.d(TAG, "✅ Detection result loaded from history")
+                        _uiState.value.copy(
+                            isLoading = false,
+                            detectionResult = result
+                        )
+                    } else {
+                        Log.e(TAG, "❌ Detection result not found in history")
+                        _uiState.value.copy(
+                            isLoading = false,
+                            errorMessage = "Hasil deteksi tidak ditemukan"
+                        )
+                    }
+                }
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    errorMessage = "Failed to save to history: ${e.message}"
-                )
+                Log.e(TAG, "❌ Error loading from history", e)
+                withContext(Dispatchers.Main) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        errorMessage = "Gagal memuat hasil deteksi: ${e.localizedMessage}"
+                    )
+                }
             }
         }
     }
 
-    // Clear error message after it's shown
-    fun clearErrorMessage() {
-        _uiState.value = _uiState.value.copy(errorMessage = null)
+    // PERBAIKAN: Method untuk clear state
+    fun clearState() {
+        _uiState.value = ResultsUiState()
     }
 }
 
+// PERBAIKAN: Data class untuk UI state
 data class ResultsUiState(
-    val detectionResult: DetectionResult? = null,
-    val isLoading: Boolean = true,
-    val saveSuccess: Boolean = false,
-    val errorMessage: String? = null
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
+    val detectionResult: DetectionResult? = null
 )
