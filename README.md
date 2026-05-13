@@ -1,4 +1,4 @@
-Fakelyze — AI Image Detection App
+Fakelyze AI Image Detection App
 
 Detect AI-generated images in real-time with machine learning
 
