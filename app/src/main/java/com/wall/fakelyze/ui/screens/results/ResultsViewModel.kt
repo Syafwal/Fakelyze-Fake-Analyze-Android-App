@@ -146,9 +146,10 @@ class ResultsViewModel(
         }
     }
 
-    // PERBAIKAN: Method untuk generate explanation default
+    // ✅ GENERATE EXPLANATION - HAPUS UNCERTAIN
     private fun generateDefaultExplanation(isAIGenerated: Boolean, confidence: Float): String {
         val percentage = (confidence * 100).toInt()
+
         return when {
             isAIGenerated && confidence >= 0.8f ->
                 "Gambar ini kemungkinan besar ($percentage%) dibuat oleh AI. Terdeteksi pola-pola yang konsisten dengan generasi AI."

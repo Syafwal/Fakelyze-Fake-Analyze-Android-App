@@ -14,9 +14,8 @@ data class HistoryEntity(
     val isAIGenerated: Boolean,
     val confidenceScore: Float,
     val timestamp: Date = Date(),
-    val explanation: String? = null  // Menambahkan field explanation
+    val explanation: String? = null
 )
-
 
 fun HistoryEntity.toDetectionResult() = DetectionResult(
     id = id,
@@ -25,5 +24,6 @@ fun HistoryEntity.toDetectionResult() = DetectionResult(
     isAIGenerated = isAIGenerated,
     confidenceScore = confidenceScore,
     timestamp = timestamp,
-    explanation = explanation  // Meneruskan explanation ke DetectionResult
+    explanation = explanation,
+    metadata = null
 )

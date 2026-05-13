@@ -171,7 +171,7 @@ class ImageClassifier(context: Context) {
         }
     }
 
-    // PERBAIKAN: Fungsi classify yang lebih cepat dengan optimasi
+    // PERBAIKAN 3: Fungsi classify yang lebih cepat dengan optimasi
     suspend fun classify(bitmap: Bitmap): Pair<String, Float> = withContext(Dispatchers.Default) {
         if (isClosed) {
             Log.w(TAG, "ImageClassifier sudah ditutup")
@@ -184,6 +184,12 @@ class ImageClassifier(context: Context) {
         }
 
         try {
+            // ✅ CEK KUALITAS GAMBAR
+            if (!checkImageQuality(bitmap)) {
+                Log.w(TAG, "Image quality check failed")
+                return@withContext Pair("LOW_QUALITY", 0.0f)
+            }
+
             if (useDummyModel) {
                 // Dummy model dengan delay yang lebih singkat
                 kotlinx.coroutines.delay(500L) // Kurangi delay dari 1000ms ke 500ms
@@ -211,33 +217,117 @@ class ImageClassifier(context: Context) {
                 return@withContext Pair(result, confidence)
             }
 
-            // PERBAIKAN: Preprocessing gambar yang lebih efisien
-            val resizedBitmap = Bitmap.createScaledBitmap(bitmap, imageSize, imageSize, true)
-            val inputBuffer = preprocessImage(resizedBitmap)
+            // ✅ PREPROCESSING DENGAN ASPECT RATIO
+            Log.d(TAG, "Original bitmap size: ${bitmap.width}x${bitmap.height}")
+            val inputBuffer = preprocessImageWithAspectRatio(bitmap)
 
-            // PERBAIKAN: Siapkan output buffer yang optimal
+            // ✅ SIAPKAN OUTPUT BUFFER
             val outputBuffer = TensorBuffer.createFixedSize(outputShape!!, DataType.FLOAT32)
 
-            // PERBAIKAN: Jalankan inference dengan error handling yang lebih baik
+            // ✅ JALANKAN INFERENCE
             val startTime = System.currentTimeMillis()
             interpreter?.run(inputBuffer, outputBuffer.buffer)
             val inferenceTime = System.currentTimeMillis() - startTime
 
             Log.d(TAG, "Inference time: ${inferenceTime}ms")
 
-            // PERBAIKAN: Interpretasi hasil yang lebih cepat
+            // ✅ INTERPRETASI HASIL DENGAN PERBAIKAN
             val result = interpretOutput(outputBuffer.floatArray)
 
-            Log.d(TAG, "Classification result: ${result.first} dengan confidence: ${result.second}")
+            Log.d(TAG, "Classification result: ${result.first} dengan confidence: ${(result.second * 100).toInt()}%")
+
             return@withContext result
 
         } catch (e: Exception) {
             Log.e(TAG, "Error during classification", e)
+            e.printStackTrace()
             return@withContext Pair("ERROR", 0.0f)
         }
     }
 
-    // PERBAIKAN: Preprocessing yang lebih efisien
+    // PERBAIKAN 2: Tambahkan fungsi untuk mengecek kualitas gambar
+    private fun checkImageQuality(bitmap: Bitmap): Boolean {
+        // Cek resolusi minimum
+        if (bitmap.width < 100 || bitmap.height < 100) {
+            Log.w(TAG, "Image resolution too low: ${bitmap.width}x${bitmap.height}")
+            return false
+        }
+
+        // Cek apakah gambar terlalu gelap atau terang
+        val pixels = IntArray(bitmap.width * bitmap.height)
+        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+
+        val avgBrightness = pixels.map { pixel ->
+            val r = (pixel shr 16) and 0xFF
+            val g = (pixel shr 8) and 0xFF
+            val b = pixel and 0xFF
+            (r + g + b) / 3
+        }.average()
+
+        Log.d(TAG, "Average brightness: $avgBrightness")
+
+        if (avgBrightness < 20 || avgBrightness > 235) {
+            Log.w(TAG, "Image brightness out of optimal range")
+            return false
+        }
+
+        return true
+    }
+
+    // PERBAIKAN 4: Preprocessing dengan Aspect Ratio
+    private fun preprocessImageWithAspectRatio(bitmap: Bitmap): ByteBuffer {
+        // ✅ PERTAHANKAN ASPECT RATIO dengan center crop
+        val scaledBitmap = if (bitmap.width != bitmap.height) {
+            val size = Math.min(bitmap.width, bitmap.height)
+            val x = (bitmap.width - size) / 2
+            val y = (bitmap.height - size) / 2
+            Bitmap.createBitmap(bitmap, x, y, size, size)
+        } else {
+            bitmap
+        }
+
+        Log.d(TAG, "Scaled bitmap size (center crop): ${scaledBitmap.width}x${scaledBitmap.height}")
+
+        val resizedBitmap = Bitmap.createScaledBitmap(
+            scaledBitmap,
+            imageSize,
+            imageSize,
+            true
+        )
+
+        Log.d(TAG, "Resized bitmap size: ${resizedBitmap.width}x${resizedBitmap.height}")
+
+        val inputBuffer = ByteBuffer.allocateDirect(
+            1 * imageSize * imageSize * numChannels * pixelSize
+        )
+        inputBuffer.order(ByteOrder.nativeOrder())
+
+        val pixels = IntArray(imageSize * imageSize)
+        resizedBitmap.getPixels(pixels, 0, imageSize, 0, 0, imageSize, imageSize)
+
+        for (pixel in pixels) {
+            // ✅ NORMALISASI SESUAI TRAINING (0-1)
+            val r = ((pixel shr 16) and 0xFF) / 255.0f
+            val g = ((pixel shr 8) and 0xFF) / 255.0f
+            val b = (pixel and 0xFF) / 255.0f
+
+            inputBuffer.putFloat(r)
+            inputBuffer.putFloat(g)
+            inputBuffer.putFloat(b)
+        }
+
+        // Cleanup
+        if (scaledBitmap != bitmap) {
+            scaledBitmap.recycle()
+        }
+        if (resizedBitmap != scaledBitmap) {
+            resizedBitmap.recycle()
+        }
+
+        return inputBuffer
+    }
+
+    // PERBAIKAN: Preprocessing yang lebih efisien (fungsi lama - bisa dihapus jika tidak digunakan)
     private fun preprocessImage(bitmap: Bitmap): ByteBuffer {
         val inputBuffer = ByteBuffer.allocateDirect(1 * imageSize * imageSize * numChannels * pixelSize)
         inputBuffer.order(ByteOrder.nativeOrder())
@@ -271,20 +361,53 @@ class ImageClassifier(context: Context) {
             return Pair("UNKNOWN", 0.0f)
         }
 
-        val fakeScore = outputArray[0]
-        val realScore = outputArray[1]
+        // Model output: [FAKE_probability, REAL_probability]
+        val fakeProb = outputArray[0]
+        val realProb = outputArray[1]
 
-        // Tentukan hasil berdasarkan skor tertinggi
-        val (result, confidence) = if (realScore > fakeScore) {
-            Pair("REAL", realScore)
+        // Log untuk debugging
+        Log.d(TAG, "Raw output - FAKE: $fakeProb, REAL: $realProb")
+
+        // Cek apakah output sudah dalam bentuk probabilitas (sum ≈ 1.0)
+        val sum = fakeProb + realProb
+        Log.d(TAG, "Probability sum: $sum")
+
+        // Jika sum tidak mendekati 1.0, kemungkinan perlu softmax
+        val (normalizedFake, normalizedReal) = if (sum < 0.9f || sum > 1.1f) {
+            // Apply softmax
+            applySoftmax(floatArrayOf(fakeProb, realProb))
         } else {
-            Pair("FAKE", fakeScore)
+            // Sudah probabilitas
+            Pair(fakeProb, realProb)
         }
 
-        // Normalisasi confidence ke rentang 0-1
-        val normalizedConfidence = confidence.coerceIn(0.0f, 1.0f)
+        Log.d(TAG, "Normalized - FAKE: $normalizedFake, REAL: $normalizedReal")
 
-        return Pair(result, normalizedConfidence)
+        // Tentukan hasil berdasarkan probabilitas tertinggi
+        val (result, confidence) = if (normalizedReal > normalizedFake) {
+            Pair("REAL", normalizedReal)
+        } else {
+            Pair("FAKE", normalizedFake)
+        }
+
+        // Confidence sudah dalam range 0-1, konversi ke persentase jika perlu
+        val confidencePercentage = (confidence * 100).coerceIn(0f, 100f)
+
+        Log.d(TAG, "Final result: $result with confidence: $confidencePercentage%")
+
+        return Pair(result, confidence)
+    }
+
+    // Fungsi helper untuk softmax
+    private fun applySoftmax(logits: FloatArray): Pair<Float, Float> {
+        val maxLogit = logits.maxOrNull() ?: 0f
+        val expValues = logits.map { kotlin.math.exp((it - maxLogit).toDouble()).toFloat() }
+        val sumExp = expValues.sum()
+
+        return Pair(
+            expValues[0] / sumExp,
+            expValues[1] / sumExp
+        )
     }
 
     // PERBAIKAN: Cleanup resources yang lebih baik

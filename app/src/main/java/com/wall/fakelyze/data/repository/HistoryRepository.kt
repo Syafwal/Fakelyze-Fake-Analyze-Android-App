@@ -36,7 +36,7 @@ class HistoryRepositoryImpl(private val historyDao: HistoryDao) : HistoryReposit
                 isAIGenerated = detectionResult.isAIGenerated,
                 confidenceScore = detectionResult.confidenceScore,
                 timestamp = detectionResult.timestamp,
-                explanation = detectionResult.explanation  // Menyimpan explanation ke database
+                explanation = detectionResult.explanation
             )
         )
     }
@@ -50,7 +50,7 @@ class HistoryRepositoryImpl(private val historyDao: HistoryDao) : HistoryReposit
                 isAIGenerated = detectionResult.isAIGenerated,
                 confidenceScore = detectionResult.confidenceScore,
                 timestamp = detectionResult.timestamp,
-                explanation = detectionResult.explanation  // Menyimpan explanation saat delete juga
+                explanation = detectionResult.explanation
             )
         )
     }

@@ -138,7 +138,7 @@ class HomeViewModel(
 
 
 
-      // PERBAIKAN RADIKAL: Hapus logic yang menyebabkan warning muncul//
+    // PERBAIKAN RADIKAL: Hapus logic yang menyebabkan warning muncul//
 
     fun initializeScanLimitIfNeeded() {
         // Cancel existing job jika ada

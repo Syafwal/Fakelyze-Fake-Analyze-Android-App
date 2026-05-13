@@ -6,19 +6,11 @@ import java.util.Date
 class Converters {
     @TypeConverter
     fun fromTimestamp(value: Long?): Date? {
-        return try {
-            value?.let { Date(it) }
-        } catch (e: Exception) {
-            null // Return null instead of crashing
-        }
+        return value?.let { Date(it) }
     }
 
     @TypeConverter
     fun dateToTimestamp(date: Date?): Long? {
-        return try {
-            date?.time
-        } catch (e: Exception) {
-            null // Return null instead of crashing
-        }
+        return date?.time
     }
 }
